@@ -96,12 +96,12 @@ void flushAppendOnlyFile(void) {
     now = time(NULL);
     if (server.appendfsync == APPENDFSYNC_ALWAYS ||
         ((server.appendfsync == APPENDFSYNC_EVERYSEC ||
-          server.appendfsync == APPENDFSYNC_EVERYSEC_SOFT) &&
+          server.appendfsync == APPENDFSYNC_EVERYSEC_ASYNC) &&
          now-server.lastfsync > 1))
     {
         /* aof_fsync is defined as fdatasync() for Linux in order to avoid
          * flushing metadata. */
-        if (server.appendfsync == APPENDFSYNC_EVERYSEC_SOFT) {
+        if (server.appendfsync == APPENDFSYNC_EVERYSEC_ASYNC) {
 #ifdef HAVE_AIO_FSYNC
             struct aiocb cb;
 

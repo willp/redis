@@ -227,8 +227,8 @@ void loadServerConfig(char *filename) {
                 server.appendfsync = APPENDFSYNC_ALWAYS;
             } else if (!strcasecmp(argv[1],"everysec")) {
                 server.appendfsync = APPENDFSYNC_EVERYSEC;
-            } else if (!strcasecmp(argv[1],"everysec-soft")) {
-                server.appendfsync = APPENDFSYNC_EVERYSEC_SOFT;
+            } else if (!strcasecmp(argv[1],"everysec-async")) {
+                server.appendfsync = APPENDFSYNC_EVERYSEC_ASYNC;
             } else {
                 err = "argument must be 'no', 'always', 'everysec', 'everysec-soft'";
                 goto loaderr;
@@ -371,8 +371,8 @@ void configSetCommand(redisClient *c) {
             server.appendfsync = APPENDFSYNC_NO;
         } else if (!strcasecmp(o->ptr,"everysec")) {
             server.appendfsync = APPENDFSYNC_EVERYSEC;
-        } else if (!strcasecmp(o->ptr,"everysec-soft")) {
-            server.appendfsync = APPENDFSYNC_EVERYSEC_SOFT;
+        } else if (!strcasecmp(o->ptr,"everysec-async")) {
+            server.appendfsync = APPENDFSYNC_EVERYSEC_ASYNC;
         } else if (!strcasecmp(o->ptr,"always")) {
             server.appendfsync = APPENDFSYNC_ALWAYS;
         } else {
@@ -562,7 +562,7 @@ void configGetCommand(redisClient *c) {
         switch(server.appendfsync) {
         case APPENDFSYNC_NO: policy = "no"; break;
         case APPENDFSYNC_EVERYSEC: policy = "everysec"; break;
-        case APPENDFSYNC_EVERYSEC_SOFT: policy = "everysec-soft"; break;
+        case APPENDFSYNC_EVERYSEC_ASYNC: policy = "everysec-async"; break;
         case APPENDFSYNC_ALWAYS: policy = "always"; break;
         default: policy = "unknown"; break; /* too harmless to panic */
         }
