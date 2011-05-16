@@ -30,6 +30,10 @@ ifeq ($(USE_JEMALLOC),yes)
   ALLOC_FLAGS=-DUSE_JEMALLOC
 endif
 
+ifeq ($(uname_S),Linux)
+  AIOLINK?= -lrt
+endif
+
 CCLINK+= $(ALLOC_LINK)
 CFLAGS+= $(ALLOC_FLAGS)
 
@@ -139,7 +143,7 @@ dependencies:
 	@cd ../deps/linenoise && $(MAKE) ARCH="$(ARCH)"
 
 redis-server: $(OBJ)
-	@$(CC) -o $(PRGNAME) $(CCOPT) $(DEBUG) $(OBJ)
+	@$(CC) -o $(PRGNAME) $(CCOPT) $(DEBUG) $(OBJ) $(AIOLINK)
 	@echo $(LINKCOLOR)LINK$(ENDCOLOR) $(BINCOLOR)$(@)$(ENDCOLOR)
 
 redis-benchmark: dependencies $(BENCHOBJ)

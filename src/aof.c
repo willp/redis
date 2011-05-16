@@ -8,6 +8,10 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 
+#ifdef HAVE_AIO_FSYNC
+#include <aio.h>
+#endif
+
 /* Called when the user switches from "appendonly yes" to "appendonly no"
  * at runtime using the CONFIG command. */
 void stopAppendOnly(void) {
@@ -91,12 +95,27 @@ void flushAppendOnlyFile(void) {
     /* Fsync if needed */
     now = time(NULL);
     if (server.appendfsync == APPENDFSYNC_ALWAYS ||
-        (server.appendfsync == APPENDFSYNC_EVERYSEC &&
+        ((server.appendfsync == APPENDFSYNC_EVERYSEC ||
+          server.appendfsync == APPENDFSYNC_EVERYSEC_SOFT) &&
          now-server.lastfsync > 1))
     {
         /* aof_fsync is defined as fdatasync() for Linux in order to avoid
          * flushing metadata. */
-        aof_fsync(server.appendfd); /* Let's try to get this data on the disk */
+        if (server.appendfsync == APPENDFSYNC_EVERYSEC_SOFT) {
+#ifdef HAVE_AIO_FSYNC
+            struct aiocb cb;
+
+            cb.aio_fildes = server.appendfd;
+            cb.aio_sigevent.sigev_notify = SIGEV_NONE;
+            aio_fsync(O_DSYNC,&cb);
+#else
+            /* Fall back to standard fsync() if the real time version
+             * is not available. */
+            aof_fsync(server.appendfd);
+#endif
+        } else {
+            aof_fsync(server.appendfd);
+        }
         server.lastfsync = now;
     }
 }

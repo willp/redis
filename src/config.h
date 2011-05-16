@@ -74,6 +74,11 @@
 #define aof_fsync fsync
 #endif
 
+/* Define HAVE_AIO_FSYNC if it is Linux */
+#ifdef __linux__
+#define HAVE_AIO_FSYNC 1
+#endif
+
 /* Byte ordering detection */
 #include <sys/types.h> /* This will likely define BYTE_ORDER */
 

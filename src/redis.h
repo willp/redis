@@ -194,6 +194,7 @@
 #define APPENDFSYNC_NO 0
 #define APPENDFSYNC_ALWAYS 1
 #define APPENDFSYNC_EVERYSEC 2
+#define APPENDFSYNC_EVERYSEC_SOFT 3
 
 /* Zip structure related defaults */
 #define REDIS_HASH_MAX_ZIPMAP_ENTRIES 512
