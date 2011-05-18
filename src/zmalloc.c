@@ -176,6 +176,35 @@ char *zstrdup(const char *s) {
     return p;
 }
 
+/* Return the allocation size when using zmalloc2() function.
+ * For requests <= 2, 2 is returned.
+ * If the allocation requested is SIZE_MAX, SIZE_MAX itself is returned.
+ * Otherwise the next power of two >= val is returned. */
+size_t zmalloc2AllocSize(size_t val) {
+    if (val <= 2) return 2;
+    if (val == (size_t)-1) return (size_t)-1;
+    val--;
+    val = (val >> 1) | val;
+    val = (val >> 2) | val;
+    val = (val >> 4) | val;
+    val = (val >> 8) | val;
+    val = (val >> 16) | val;
+    val = (val >> 32) | val;
+    return val+1;
+}
+
+void *zmalloc2(size_t size) {
+    return zmalloc(zmalloc2AllocSize(size));
+}
+
+void *zcalloc2(size_t size) {
+    return zcalloc(zmalloc2AllocSize(size));
+}
+
+void *zrealloc2(void *ptr, size_t size) {
+    return zrealloc(ptr,zmalloc2AllocSize(size));
+}
+
 size_t zmalloc_used_memory(void) {
     size_t um;
 
@@ -193,6 +222,8 @@ size_t zmalloc_allocations_for_size(size_t size) {
 void zmalloc_enable_thread_safeness(void) {
     zmalloc_thread_safe = 1;
 }
+
+
 
 /* Get the RSS information in an OS-specific way.
  *
