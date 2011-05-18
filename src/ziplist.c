@@ -338,7 +338,7 @@ static unsigned int zipRawEntryLength(unsigned char *p) {
 /* Create a new empty ziplist. */
 unsigned char *ziplistNew(void) {
     unsigned int bytes = ZIPLIST_HEADER_SIZE+1;
-    unsigned char *zl = zmalloc(bytes);
+    unsigned char *zl = zmalloc2(bytes);
     ZIPLIST_BYTES(zl) = bytes;
     ZIPLIST_TAIL_OFFSET(zl) = ZIPLIST_HEADER_SIZE;
     ZIPLIST_LENGTH(zl) = 0;
@@ -348,7 +348,7 @@ unsigned char *ziplistNew(void) {
 
 /* Resize the ziplist. */
 static unsigned char *ziplistResize(unsigned char *zl, unsigned int len) {
-    zl = zrealloc(zl,len);
+    zl = zrealloc2(zl,len);
     ZIPLIST_BYTES(zl) = len;
     zl[len-1] = ZIP_END;
     return zl;
