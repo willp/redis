@@ -27,11 +27,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * History:
- *
- * - 22 March 2011: History section created on top of sds.c
- * - 22 March 2011: Fixed a problem with "\xab" escapes convertion in
- *                  function sdssplitargs().
+ * History: See the git history for this file.
  */
 
 #define SDS_ABORT_ON_OOM
@@ -48,17 +44,38 @@ static void sdsOomAbort(void) {
     abort();
 }
 
+/* In order for our dynamic string library to have O(1) amortized
+ * time append operation, we need to double the allocated buffer
+ * every time there is no longer left space in our string.
+ * 
+ * While doing that we allocate always in power of two, in order to
+ * help the underlying allocator. */
+size_t sdsAllocSize(size_t val) {
+    if (val <= 2) return 2;
+    if (val == (size_t)-1) return (size_t)-1;
+    val--;
+    val = (val >> 1) | val;
+    val = (val >> 2) | val;
+    val = (val >> 4) | val;
+    val = (val >> 8) | val;
+    val = (val >> 16) | val;
+    val = (val >> 32) | val;
+    return val+1;
+}
+
 sds sdsnewlen(const void *init, size_t initlen) {
     struct sdshdr *sh;
+    size_t alloclen;
 
-    sh = zmalloc(sizeof(struct sdshdr)+initlen+1);
+    alloclen = sdsAllocSize(sizeof(struct sdshdr)+initlen+1);
+    sh = zmalloc(alloclen);
 #ifdef SDS_ABORT_ON_OOM
     if (sh == NULL) sdsOomAbort();
 #else
     if (sh == NULL) return NULL;
 #endif
     sh->len = initlen;
-    sh->free = 0;
+    sh->free = alloclen-(sizeof(struct sdshdr)+initlen+1);
     if (initlen) {
         if (init) memcpy(sh->buf, init, initlen);
         else memset(sh->buf,0,initlen);
@@ -95,13 +112,17 @@ void sdsupdatelen(sds s) {
 static sds sdsMakeRoomFor(sds s, size_t addlen) {
     struct sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
-    size_t len, newlen;
+    size_t len, newlen, alloclen;
 
     if (free >= addlen) return s;
     len = sdslen(s);
     sh = (void*) (s-(sizeof(struct sdshdr)));
     newlen = (len+addlen)*2;
-    newsh = zrealloc(sh, sizeof(struct sdshdr)+newlen+1);
+    alloclen = sdsAllocSize(sizeof(struct sdshdr)+newlen+1);
+    printf("Alloc size is %zu instead of %zu)\n",
+        alloclen, sizeof(struct sdshdr)+newlen+1);
+    newlen += alloclen-(sizeof(struct sdshdr)+newlen+1);
+    newsh = zrealloc(sh, alloclen);
 #ifdef SDS_ABORT_ON_OOM
     if (newsh == NULL) sdsOomAbort();
 #else
@@ -630,5 +651,6 @@ int main(void) {
         test_cond("sdscmp(bar,bar)", sdscmp(x,y) < 0)
     }
     test_report()
+    return 0;
 }
 #endif
