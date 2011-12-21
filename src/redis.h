@@ -136,6 +136,7 @@
                                server.unblocked_clients */
 #define REDIS_LUA_CLIENT 512 /* This is a non connected client used by Lua */
 #define REDIS_ASKING 1024   /* Client issued the ASKING command */
+#define REDIS_CLIENT_OVERFLOW 2048 /* Client queued too many reply objects */
 
 /* Client request types */
 #define REDIS_REQ_INLINE 1
@@ -595,6 +596,7 @@ struct redisServer {
     unsigned long long maxmemory;
     int maxmemory_policy;
     int maxmemory_samples;
+    unsigned int maxclientqueue;
     /* Blocked clients */
     unsigned int bpop_blocked_clients;
     list *unblocked_clients; /* list of clients to unblock before next loop */
@@ -748,6 +750,7 @@ long long mstime(void);
 /* networking.c -- Networking and Client related operations */
 redisClient *createClient(int fd);
 void closeTimedoutClients(void);
+void closeOverflowedClients(void);
 void freeClient(redisClient *c);
 void resetClient(redisClient *c);
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask);

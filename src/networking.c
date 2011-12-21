@@ -133,6 +133,12 @@ void _addReplyObjectToList(redisClient *c, robj *o) {
         } else {
             incrRefCount(o);
             listAddNodeTail(c->reply,o);
+
+	    /* enforce max client queued message limit */
+            if (server.maxclientqueue > 0 &&
+                listLength(c->reply) > server.maxclientqueue) {
+                c->flags |= (REDIS_CLOSE_AFTER_REPLY|REDIS_CLIENT_OVERFLOW);
+	    }
         }
     }
 }
@@ -161,6 +167,12 @@ void _addReplySdsToList(redisClient *c, sds s) {
             sdsfree(s);
         } else {
             listAddNodeTail(c->reply,createObject(REDIS_STRING,s));
+
+	    /* enforce max client queued message limit */
+            if (server.maxclientqueue > 0 &&
+                listLength(c->reply) > server.maxclientqueue) {
+                c->flags |= (REDIS_CLOSE_AFTER_REPLY|REDIS_CLIENT_OVERFLOW);
+            }
         }
     }
 }
@@ -183,6 +195,12 @@ void _addReplyStringToList(redisClient *c, char *s, size_t len) {
             tail->ptr = sdscatlen(tail->ptr,s,len);
         } else {
             listAddNodeTail(c->reply,createStringObject(s,len));
+
+	    /* enforce max client queued message limit */
+            if (server.maxclientqueue > 0 &&
+                listLength(c->reply) > server.maxclientqueue) {
+                c->flags |= (REDIS_CLOSE_AFTER_REPLY|REDIS_CLIENT_OVERFLOW);
+            }
         }
     }
 }
@@ -616,7 +634,11 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
 
         /* Close connection after entire reply has been sent. */
-        if (c->flags & REDIS_CLOSE_AFTER_REPLY) freeClient(c);
+        if (c->flags & REDIS_CLOSE_AFTER_REPLY) {
+            if (c->flags & REDIS_CLIENT_OVERFLOW)
+                redisLog(REDIS_WARNING, "Dropping client connection, overflowed");
+            freeClient(c);
+        }
     }
 }
 
@@ -654,6 +676,22 @@ void closeTimedoutClients(void) {
                 addReply(c,shared.nullmultibulk);
                 unblockClientWaitingData(c);
             }
+        }
+    }
+}
+
+void closeOverflowedClients(void) {
+    redisClient *c;
+    listNode *ln;
+    listIter li;
+
+    listRewind(server.clients,&li);
+    while ((ln = listNext(&li)) != NULL) {
+        c = listNodeValue(ln);
+        if (c->flags & REDIS_CLIENT_OVERFLOW) {
+            redisLog(REDIS_WARNING,"Closing overflowed client: %lu queue size",
+                     listLength(c->reply));
+            freeClient(c);
         }
     }
 }
